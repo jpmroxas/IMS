@@ -3,6 +3,13 @@
  * High-Performance Vanilla JS SPA
  */
 
+console.log("IMS Application Version: 3.0");
+
+window.onerror = function(message, source, lineno, colno, error) {
+    alert("System Error: " + message + "\nLine: " + lineno);
+    return false;
+};
+
 const CONFIG = {
     DB_KEYS: {
         USER: 'ims_user',
