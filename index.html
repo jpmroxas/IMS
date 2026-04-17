@@ -13,14 +13,20 @@
     <link rel="stylesheet" href="style.css">
     <link rel="manifest" href="manifest.json">
     <script>
+        // FORCED REFRESH: Kill old service workers that might be caching old code
         if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('sw.js')
-                    .then(reg => console.log('IMS Service Worker Registered'))
-                    .catch(err => console.log('IMS Service Worker Failed', err));
+            navigator.serviceWorker.getRegistrations().then(function(registrations) {
+                for(let registration of registrations) {
+                    registration.unregister();
+                }
             });
         }
     </script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.2/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.2/firebase-firestore-compat.js"></script>
+    <script src="firebase-config.js?v=4"></script>
+    <script src="app.js?v=4" defer></script>
 </head>
 
 <body class="dark-theme">
@@ -60,11 +66,7 @@
             </div>
         </div>
 
-        <!-- Firebase SDKs -->
-        <script src="https://www.gstatic.com/firebasejs/10.7.2/firebase-app-compat.js"></script>
-        <script src="https://www.gstatic.com/firebasejs/10.7.2/firebase-auth-compat.js"></script>
-        <script src="https://www.gstatic.com/firebasejs/10.7.2/firebase-firestore-compat.js"></script>
-        <script src="firebase-config.js?v=3"></script>
+
 
         <!-- Main Dashboard Layout -->
         <div id="main-layout" class="layout hidden">
@@ -127,7 +129,7 @@
             </main>
         </div>
     </div>
-    <script src="app.js?v=3"></script>
+
 </body>
 
 </html>
