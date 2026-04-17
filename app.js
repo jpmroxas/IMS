@@ -598,6 +598,8 @@ class App {
         document.body.appendChild(modal);
 
         document.getElementById('close-modal').onclick = () => modal.remove();
+        document.getElementById('product-form').onsubmit = async (e) => {
+            e.preventDefault();
             const formData = {
                 name: document.getElementById('p-name').value,
                 category: document.getElementById('p-cat').value,
