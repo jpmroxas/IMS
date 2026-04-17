@@ -63,6 +63,22 @@
                         <a href="#" id="toggle-auth-link">Sign Up</a>
                     </p>
                 </form>
+        </div>
+
+        <!-- Pending Activation View -->
+        <div id="pending-view" class="view hidden">
+            <div class="auth-card glass" style="text-align: center;">
+                <div class="logo">
+                    <span class="logo-icon"></span>
+                </div>
+                <h2>Account Verification Pending</h2>
+                <p style="margin: 1.5rem 0; color: var(--text-secondary); line-height: 1.6;">
+                    Welcome to the system! Your account has been created successfully.<br><br>
+                    <strong>Please contact the Manager to complete your payment and activate your access.</strong>
+                </p>
+                <div style="border-top: 1px solid var(--glass-border); padding-top: 1.5rem;">
+                    <button class="btn btn-ghost" onclick="window.app.handleLogout()">Logout</button>
+                </div>
             </div>
         </div>
 
@@ -89,6 +105,9 @@
                     </a>
                     <a href="#sales" class="nav-link" data-view="sales">
                         <span class="icon">💰</span> Sales
+                    </a>
+                    <a href="#admin" class="nav-link" data-view="admin" style="display: none;">
+                        <span class="icon">🛡️</span> Admin
                     </a>
                 </nav>
                 <div class="data-management">

@@ -28,7 +28,10 @@ class App {
             inventory: [],
             sales: [],
             currentView: 'dashboard',
-            authMode: 'login' // 'login' or 'signup'
+            authMode: 'login', // 'login' or 'signup'
+            isPendingActivation: false,
+            isAdmin: false,
+            allUsers: [] // For admin view
         };
 
         this.init();
@@ -43,19 +46,63 @@ class App {
 
     initFirebase() {
         // Listen for Authentication State
-        auth.onAuthStateChanged((user) => {
+        auth.onAuthStateChanged(async (user) => {
             if (user) {
+                // Fetch User Profile from Firestore
+                const userDoc = await db.collection('users').doc(user.uid).get();
+                
+                if (!userDoc.exists) {
+                    // Critical: If doc doesn't exist, create it as pending
+                    await this.createUserProfile(user);
+                    this.state.isPendingActivation = true;
+                    this.state.isAdmin = false;
+                } else {
+                    const userData = userDoc.data();
+                    this.state.isPendingActivation = !userData.isActive;
+                    this.state.isAdmin = userData.role === 'admin';
+                }
+
                 this.state.user = { 
                     id: user.uid, 
                     email: user.email, 
                     name: user.email.split('@')[0] 
                 };
-                this.setupRealtimeSync();
+
+                if (!this.state.isPendingActivation) {
+                    this.setupRealtimeSync();
+                    if (this.state.isAdmin) this.setupAdminSync();
+                }
+                
                 this.render();
             } else {
                 this.state.user = null;
+                this.state.isPendingActivation = false;
+                this.state.isAdmin = false;
                 this.render();
             }
+        });
+    }
+
+    async createUserProfile(user) {
+        // First user signed up? Make them admin. Otherwise pending.
+        const usersSnapshot = await db.collection('users').limit(1).get();
+        const isFirstUser = usersSnapshot.empty;
+
+        await db.collection('users').doc(user.uid).set({
+            email: user.email,
+            role: isFirstUser ? 'admin' : 'user',
+            isActive: isFirstUser ? true : false,
+            createdAt: new Date().toISOString()
+        });
+    }
+
+    setupAdminSync() {
+        db.collection('users').onSnapshot((snapshot) => {
+            this.state.allUsers = [];
+            snapshot.forEach(doc => {
+                this.state.allUsers.push({ id: doc.id, ...doc.data() });
+            });
+            if (this.state.currentView === 'admin') this.renderView();
         });
     }
 
@@ -108,7 +155,8 @@ class App {
             confirmPasswordGroup: document.getElementById('confirm-password-group'),
             toggleAuthLink: document.getElementById('toggle-auth-link'),
             authSubmitBtn: document.getElementById('auth-submit-btn'),
-            toggleText: document.getElementById('toggle-text')
+            toggleText: document.getElementById('toggle-text'),
+            pendingView: document.getElementById('pending-view')
         };
     }
 
@@ -205,9 +253,22 @@ class App {
         if (!this.state.user) {
             this.ui.authContainer.classList.remove('hidden');
             this.ui.mainLayout.classList.add('hidden');
+            this.ui.pendingView.classList.add('hidden');
+        } else if (this.state.isPendingActivation) {
+            this.ui.authContainer.classList.add('hidden');
+            this.ui.mainLayout.classList.add('hidden');
+            this.ui.pendingView.classList.remove('hidden');
         } else {
             this.ui.authContainer.classList.add('hidden');
+            this.ui.pendingView.classList.add('hidden');
             this.ui.mainLayout.classList.remove('hidden');
+            
+            // Show/Hide Admin link in sidebar
+            const adminLink = document.querySelector('[data-view="admin"]');
+            if (adminLink) {
+                adminLink.style.display = this.state.isAdmin ? 'flex' : 'none';
+            }
+
             this.renderView();
         }
     }
@@ -227,8 +288,68 @@ class App {
             case 'sales':
                 this.renderSales();
                 break;
+            case 'admin':
+                this.renderAdmin();
+                break;
             default:
                 this.renderDashboard();
+        }
+    }
+
+    renderAdmin() {
+        if (!this.state.isAdmin) return;
+        
+        this.ui.viewContent.innerHTML = `
+            <div class="data-card glass">
+                <h3>Member Management</h3>
+                <p style="color: var(--text-secondary); margin-bottom: 2rem;">As an Admin, you can activate or deactivate users here.</p>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Email</th>
+                                <th>Joined</th>
+                                <th>Role</th>
+                                <th>Status</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${this.state.allUsers.map(user => `
+                                <tr>
+                                    <td>${user.email}</td>
+                                    <td>${new Date(user.createdAt).toLocaleDateString()}</td>
+                                    <td><span class="badge">${user.role}</span></td>
+                                    <td>
+                                        <span class="badge ${user.isActive ? 'badge-success' : 'badge-error'}">
+                                            ${user.isActive ? 'Active' : 'Pending'}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        ${user.role !== 'admin' ? `
+                                            <button class="btn btn-ghost" style="color: ${user.isActive ? 'var(--error)' : 'var(--success)'}" 
+                                                onclick="window.app.toggleUserStatus('${user.id}', ${!user.isActive})">
+                                                ${user.isActive ? 'Deactivate' : 'Activate'}
+                                            </button>
+                                        ` : '<span style="color:var(--text-secondary)">-</span>'}
+                                    </td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        `;
+    }
+
+    async toggleUserStatus(userId, newStatus) {
+        try {
+            await db.collection('users').doc(userId).update({
+                isActive: newStatus
+            });
+            alert(`User status updated to ${newStatus ? 'Active' : 'Inactive'}.`);
+        } catch (err) {
+            alert('Failed to update user: ' + err.message);
         }
     }
 
