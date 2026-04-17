@@ -84,14 +84,15 @@ class App {
     }
 
     async createUserProfile(user) {
-        // First user signed up? Make them admin. Otherwise pending.
+        // First user signed up? OR is it the owner's email? Make them admin.
         const usersSnapshot = await db.collection('users').limit(1).get();
         const isFirstUser = usersSnapshot.empty;
+        const isOwner = user.email === 'roxas.johnpaul@gmail.com';
 
         await db.collection('users').doc(user.uid).set({
             email: user.email,
-            role: isFirstUser ? 'admin' : 'user',
-            isActive: isFirstUser ? true : false,
+            role: (isFirstUser || isOwner) ? 'admin' : 'user',
+            isActive: (isFirstUser || isOwner) ? true : false,
             createdAt: new Date().toISOString()
         });
     }
