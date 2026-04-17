@@ -4,35 +4,31 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Inventory Management System | Sales & Inventory</title>
+    <title>Inventory Management System | Sales &amp; Inventory</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link
-        href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&family=Plus+Jakarta+Sans:wght@300;400;600;700&display=swap"
-        rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&family=Plus+Jakarta+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
     <link rel="manifest" href="manifest.json">
     <script>
-        // Unregister ALL old service workers to clear stale cache
+        // Kill old service workers
         if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.getRegistrations().then(regs => {
-                regs.forEach(r => r.unregister());
-            });
-            caches.keys().then(keys => {
-                keys.forEach(key => caches.delete(key));
-            });
+            navigator.serviceWorker.getRegistrations().then(regs => regs.forEach(r => r.unregister()));
+            caches.keys().then(keys => keys.forEach(key => caches.delete(key)));
         }
     </script>
+    <!-- Firebase SDKs -->
     <script src="https://www.gstatic.com/firebasejs/10.7.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.2/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.2/firebase-firestore-compat.js"></script>
-    <script src="firebase-config.js?v=5"></script>
-    <script src="app.js?v=5" defer></script>
+    <script src="firebase-config.js?v=6"></script>
+    <script src="app.js?v=6" defer></script>
 </head>
 
 <body class="dark-theme">
     <div id="app">
-        <!-- Auth View -->
+
+        <!-- ===== AUTH VIEW ===== -->
         <div id="auth-container" class="view">
             <div class="auth-card glass">
                 <div class="auth-header">
@@ -56,17 +52,17 @@
                         <label for="confirm-password">Confirm Password</label>
                         <input type="password" id="confirm-password" placeholder="••••••••">
                     </div>
-                    
                     <button type="submit" id="auth-submit-btn" class="btn btn-primary">Sign In</button>
-                    
                     <p class="auth-toggle">
                         <span id="toggle-text">Don't have an account?</span>
                         <a href="#" id="toggle-auth-link">Sign Up</a>
                     </p>
                 </form>
+            </div>
         </div>
+        <!-- ===== END AUTH VIEW ===== -->
 
-        <!-- Pending Activation View -->
+        <!-- ===== PENDING ACTIVATION VIEW ===== -->
         <div id="pending-view" class="view hidden">
             <div class="auth-card glass" style="text-align: center;">
                 <div class="logo">
@@ -82,10 +78,9 @@
                 </div>
             </div>
         </div>
+        <!-- ===== END PENDING VIEW ===== -->
 
-
-
-        <!-- Main Dashboard Layout -->
+        <!-- ===== MAIN DASHBOARD LAYOUT ===== -->
         <div id="main-layout" class="layout hidden">
             <aside class="sidebar glass">
                 <div class="sidebar-header">
@@ -143,13 +138,13 @@
                         <span class="badge badge-success">Admin</span>
                     </div>
                 </header>
-
                 <!-- Views will be rendered here -->
                 <div id="view-content" class="view-content"></div>
             </main>
         </div>
-    </div>
+        <!-- ===== END MAIN LAYOUT ===== -->
 
+    </div>
 </body>
 
 </html>

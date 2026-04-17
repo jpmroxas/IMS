@@ -52,8 +52,12 @@ class App {
                 if (user.email === OWNER_EMAIL) {
                     this.state.isPendingActivation = false;
                     this.state.isAdmin = true;
-                    this.setupRealtimeSync();
-                    this.setupAdminSync();
+                    try {
+                        this.setupRealtimeSync();
+                        this.setupAdminSync();
+                    } catch(e) {
+                        console.warn('Firestore not ready:', e.message);
+                    }
                     this.render();
                     return;
                 }
