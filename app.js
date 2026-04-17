@@ -16,30 +16,73 @@ const CONFIG = {
 class App {
     constructor() {
         this.state = {
-            user: this.loadFromStorage(CONFIG.DB_KEYS.USER, null),
-            inventory: this.loadFromStorage(CONFIG.DB_KEYS.INVENTORY, this.getInitialInventory()),
-            sales: this.loadFromStorage(CONFIG.DB_KEYS.SALES, []),
+            user: null,
+            inventory: [],
+            sales: [],
             currentView: 'dashboard'
         };
 
         this.init();
     }
 
-    loadFromStorage(key, defaultValue) {
-        try {
-            const data = localStorage.getItem(key);
-            return data ? JSON.parse(data) : defaultValue;
-        } catch (e) {
-            console.error(`Error loading ${key} from storage:`, e);
-            return defaultValue;
-        }
-    }
-
     init() {
         this.cacheDOM();
         this.bindEvents();
         this.initPWA();
-        this.render();
+        this.initFirebase();
+    }
+
+    initFirebase() {
+        // Listen for Authentication State
+        auth.onAuthStateChanged((user) => {
+            if (user) {
+                this.state.user = { 
+                    id: user.uid, 
+                    email: user.email, 
+                    name: user.email.split('@')[0] 
+                };
+                this.setupRealtimeSync();
+                this.render();
+            } else {
+                this.state.user = null;
+                this.render();
+            }
+        });
+    }
+
+    setupRealtimeSync() {
+        // Real-time Inventory Sync
+        db.collection('inventory').onSnapshot((querySnapshot) => {
+            this.state.inventory = [];
+            querySnapshot.forEach((doc) => {
+                this.state.inventory.push({ id: doc.id, ...doc.data() });
+            });
+            
+            // Initial data migration if database is empty
+            if (this.state.inventory.length === 0) {
+                this.migrateInitialData();
+            }
+            
+            this.renderView();
+        });
+
+        // Real-time Sales Sync
+        db.collection('sales').orderBy('date', 'desc').limit(100).onSnapshot((querySnapshot) => {
+            this.state.sales = [];
+            querySnapshot.forEach((doc) => {
+                this.state.sales.push({ id: doc.id, ...doc.data() });
+            });
+            this.renderView();
+        });
+    }
+
+    async migrateInitialData() {
+        console.log("Migrating initial inventory to cloud...");
+        const initial = this.getInitialInventory();
+        for (const item of initial) {
+            const { id, ...data } = item;
+            await db.collection('inventory').add(data);
+        }
     }
 
     cacheDOM() {
@@ -68,7 +111,6 @@ class App {
             });
         });
 
-        // Listen for hash changes if needed, but we'll use a direct switch for now
         window.addEventListener('hashchange', () => {
             const hash = window.location.hash.replace('#', '') || 'dashboard';
             this.switchView(hash);
@@ -77,25 +119,31 @@ class App {
 
     // --- State Actions ---
 
-    handleLogin(e) {
+    async handleLogin(e) {
         e.preventDefault();
-        const username = e.target.querySelector('#username').value;
+        const email = e.target.querySelector('#email').value;
         const password = e.target.querySelector('#password').value;
 
-        if (username === 'admin' && password === 'admin') {
-            const user = { username: 'admin', role: 'Admin', name: 'Admin' };
-            this.state.user = user;
-            localStorage.setItem(CONFIG.DB_KEYS.USER, JSON.stringify(user));
-            this.render();
-        } else {
-            alert('Invalid credentials. Access Denied.');
+        try {
+            // Try to sign in
+            await auth.signInWithEmailAndPassword(email, password);
+        } catch (error) {
+            // If user doesn't exist, create them (Auto-Signup)
+            if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential') {
+                try {
+                    await auth.createUserWithEmailAndPassword(email, password);
+                } catch (signUpError) {
+                    alert('Login Error: ' + signUpError.message);
+                }
+            } else {
+                alert('Authentication Error: ' + error.message);
+            }
         }
     }
 
-    handleLogout() {
-        this.state.user = null;
-        localStorage.removeItem(CONFIG.DB_KEYS.USER);
-        this.render();
+    async handleLogout() {
+        await auth.signOut();
+        window.location.hash = '';
     }
 
     switchView(view) {
@@ -313,36 +361,40 @@ class App {
         document.getElementById('new-sale-form').addEventListener('submit', (e) => this.handleNewSale(e));
     }
 
-    handleNewSale(e) {
+    async handleNewSale(e) {
         e.preventDefault();
-        const productId = parseInt(document.getElementById('sale-product').value);
+        const productId = document.getElementById('sale-product').value;
         const qty = parseInt(document.getElementById('sale-qty').value);
         
         const product = this.state.inventory.find(p => p.id === productId);
-        if (product.stock < qty) {
+        if (!product || product.stock < qty) {
             alert('Insufficient stock!');
             return;
         }
 
-        // Update Stock
-        product.stock -= qty;
-        
-        // Add Sale Record
-        const newSale = {
-            id: Date.now(),
-            productId,
-            productName: product.name,
-            qty,
-            total: product.price * qty,
-            profit: (product.price - (product.costPrice || 0)) * qty,
-            date: new Date().toISOString()
-        };
+        try {
+            // 1. Update Stock in Firestore
+            await db.collection('inventory').doc(productId).update({
+                stock: product.stock - qty
+            });
+            
+            // 2. Add Sale Record to Firestore
+            const newSale = {
+                productId,
+                productName: product.name,
+                qty,
+                total: product.price * qty,
+                profit: (product.price - (product.costPrice || 0)) * qty,
+                date: new Date().toISOString()
+            };
 
-        this.state.sales.push(newSale);
-        
-        this.saveState();
-        this.renderView();
-        this.showReceiptModal(newSale.id);
+            const saleDoc = await db.collection('sales').add(newSale);
+            
+            // Note: renderView will be called automatically by onSnapshot
+            this.showReceiptModal(saleDoc.id);
+        } catch (err) {
+            alert('Sale failed: ' + err.message);
+        }
     }
 
     exportData() {
@@ -440,8 +492,7 @@ class App {
     }
 
     saveState() {
-        localStorage.setItem(CONFIG.DB_KEYS.INVENTORY, JSON.stringify(this.state.inventory));
-        localStorage.setItem(CONFIG.DB_KEYS.SALES, JSON.stringify(this.state.sales));
+        // Method kept for compatibility but logic removed as Firestore handles persistence
     }
 
     getInitialInventory() {
@@ -514,8 +565,6 @@ class App {
         document.body.appendChild(modal);
 
         document.getElementById('close-modal').onclick = () => modal.remove();
-        document.getElementById('product-form').onsubmit = (e) => {
-            e.preventDefault();
             const formData = {
                 name: document.getElementById('p-name').value,
                 category: document.getElementById('p-cat').value,
@@ -525,26 +574,26 @@ class App {
                 costPrice: parseFloat(document.getElementById('p-cost').value)
             };
 
-            if (isEdit) {
-                Object.assign(product, formData);
-            } else {
-                this.state.inventory.push({
-                    id: Date.now(),
-                    ...formData
-                });
+            try {
+                if (isEdit) {
+                    await db.collection('inventory').doc(product.id).set(formData, { merge: true });
+                } else {
+                    await db.collection('inventory').add(formData);
+                }
+                modal.remove();
+            } catch (err) {
+                alert('Save failed: ' + err.message);
             }
-
-            this.saveState();
-            modal.remove();
-            this.renderView();
         };
     }
 
-    deleteProduct(id) {
+    async deleteProduct(id) {
         if (confirm('Are you sure you want to delete this product? This action cannot be undone.')) {
-            this.state.inventory = this.state.inventory.filter(p => p.id !== id);
-            this.saveState();
-            this.renderView();
+            try {
+                await db.collection('inventory').doc(id).delete();
+            } catch (err) {
+                alert('Delete failed: ' + err.message);
+            }
         }
     }
 
