@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inventory Management System | Sales & Inventory</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&family=Plus+Jakarta+Sans:wght@300;400;600;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <link rel="manifest" href="manifest.json">
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js')
+                    .then(reg => console.log('IMS Service Worker Registered'))
+                    .catch(err => console.log('IMS Service Worker Failed', err));
+            });
+        }
+    </script>
+</head>
+
+<body class="dark-theme">
+    <div id="app">
+        <!-- Auth View -->
+        <div id="auth-container" class="view">
+            <div class="auth-card glass">
+                <div class="auth-header">
+                    <div class="logo">
+                        <span class="logo-icon"></span>
+                        <h1>Inventory Management System</h1>
+                    </div>
+                    <p class="subtitle">Universal Inventory Management</p>
+                </div>
+                <form id="login-form" class="auth-form">
+                    <div class="input-group">
+                        <label for="username">Username</label>
+                        <input type="text" id="username" required placeholder="admin">
+                    </div>
+                    <div class="input-group">
+                        <label for="password">Password</label>
+                        <input type="password" id="password" required placeholder="••••••••">
+                    </div>
+                    <button type="submit" class="btn btn-primary">Sign In</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Main Dashboard Layout -->
+        <div id="main-layout" class="layout hidden">
+            <aside class="sidebar glass">
+                <div class="sidebar-header">
+                    <div class="logo">
+                        <span class="logo-icon"></span>
+                        <span>Inventory Management System</span>
+                    </div>
+                    <button id="install-app-btn" class="btn btn-primary btn-sm hidden" style="margin-top: 1rem; width: 100%;">
+                        <span>📲</span> Install Desktop App
+                    </button>
+                </div>
+                <nav class="sidebar-nav">
+                    <a href="#dashboard" class="nav-link active" data-view="dashboard">
+                        <span class="icon">📊</span> Dashboard
+                    </a>
+                    <a href="#inventory" class="nav-link" data-view="inventory">
+                        <span class="icon">📦</span> Inventory
+                    </a>
+                    <a href="#sales" class="nav-link" data-view="sales">
+                        <span class="icon">💰</span> Sales
+                    </a>
+                </nav>
+                <div class="data-management">
+                    <h4>Data Vault</h4>
+                    <div class="management-btns">
+                        <button class="btn btn-ghost btn-sm" onclick="window.app.exportData()">
+                            <span>💾</span> Backup Data
+                        </button>
+                        <button class="btn btn-ghost btn-sm" onclick="window.app.exportToCSV()">
+                            <span>📊</span> Export Inventory
+                        </button>
+                        <button class="btn btn-ghost btn-sm" onclick="window.app.exportSalesToCSV()">
+                            <span>📈</span> Export Sales Report
+                        </button>
+                        <button class="btn btn-ghost btn-sm" onclick="document.getElementById('import-input').click()">
+                            <span>📂</span> Restore Data
+                        </button>
+                        <input type="file" id="import-input" hidden accept=".json" onchange="window.app.importData(event)">
+                    </div>
+                </div>
+                <div class="sidebar-footer">
+                    <button id="logout-btn" class="btn btn-ghost">
+                        <span class="icon">🚪</span> Logout
+                    </button>
+                </div>
+            </aside>
+
+            <main class="content">
+                <header class="content-header">
+                    <h2 id="view-title">Dashboard</h2>
+                    <div class="user-meta">
+                        <span class="badge badge-success">Admin</span>
+                    </div>
+                </header>
+
+                <!-- Views will be rendered here -->
+                <div id="view-content" class="view-content"></div>
+            </main>
+        </div>
+    </div>
+    <script src="app.js"></script>
+</body>
+
+</html>
