@@ -475,8 +475,8 @@ class App {
                                     <td>₱${item.price}</td>
                                     <td>
                                         <div style="display: flex; gap: 0.5rem;">
-                                            <button class="btn btn-ghost" onclick="window.app.showEditProductModal(${item.id})">Edit</button>
-                                            <button class="btn btn-ghost" style="color: var(--error)" onclick="window.app.deleteProduct(${item.id})">Delete</button>
+                                            <button class="btn btn-ghost" onclick="window.app.showEditProductModal('${item.id}')">Edit</button>
+                                            <button class="btn btn-ghost" style="color: var(--error)" onclick="window.app.deleteProduct('${item.id}')">Delete</button>
                                         </div>
                                     </td>
                                 </tr>
@@ -538,7 +538,7 @@ class App {
                                         <td>${new Date(sale.date).toLocaleTimeString()}</td>
                                         <td style="font-weight: 600; color: var(--accent-cyan)">₱${sale.total}</td>
                                         <td>
-                                            <button class="btn btn-ghost" style="padding: 0.2rem 0.5rem; font-size: 0.8rem;" onclick="window.app.showReceiptModal(${sale.id})">
+                                            <button class="btn btn-ghost" style="padding: 0.2rem 0.5rem; font-size: 0.8rem;" onclick="window.app.showReceiptModal('${sale.id}')">
                                                 <span>📄</span> Receipt
                                             </button>
                                         </td>
