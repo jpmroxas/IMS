@@ -138,6 +138,9 @@ class App {
             }
             
             this.renderView();
+        }, (error) => {
+            console.warn('Inventory sync error:', error.message);
+            this.renderView(); // Still render even if Firestore fails
         });
 
         // Real-time Sales Sync
@@ -147,15 +150,21 @@ class App {
                 this.state.sales.push({ id: doc.id, ...doc.data() });
             });
             this.renderView();
+        }, (error) => {
+            console.warn('Sales sync error:', error.message);
         });
     }
 
     async migrateInitialData() {
-        console.log("Migrating initial inventory to cloud...");
-        const initial = this.getInitialInventory();
-        for (const item of initial) {
-            const { id, ...data } = item;
-            await db.collection('inventory').add(data);
+        try {
+            console.log("Migrating initial inventory to cloud...");
+            const initial = this.getInitialInventory();
+            for (const item of initial) {
+                const { id, ...data } = item;
+                await db.collection('inventory').add(data);
+            }
+        } catch (err) {
+            console.warn('Migration failed (Firestore rules may need updating):', err.message);
         }
     }
 
