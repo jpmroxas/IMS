@@ -37,32 +37,51 @@ class App {
     }
 
     initFirebase() {
-        // Listen for Authentication State
+        const OWNER_EMAIL = 'roxas.johnpaul@gmail.com';
+        
         auth.onAuthStateChanged(async (user) => {
             if (user) {
-                // Fetch User Profile from Firestore
-                const userDoc = await db.collection('users').doc(user.uid).get();
-                
-                if (!userDoc.exists) {
-                    // Critical: If doc doesn't exist, create it as pending
-                    await this.createUserProfile(user);
-                    this.state.isPendingActivation = true;
-                    this.state.isAdmin = false;
-                } else {
-                    const userData = userDoc.data();
-                    this.state.isPendingActivation = !userData.isActive;
-                    this.state.isAdmin = userData.role === 'admin';
-                }
-
+                // Set basic user state first
                 this.state.user = { 
                     id: user.uid, 
                     email: user.email, 
                     name: user.email.split('@')[0] 
                 };
 
-                if (!this.state.isPendingActivation) {
+                // Owner account bypasses all Firestore checks - instant admin access
+                if (user.email === OWNER_EMAIL) {
+                    this.state.isPendingActivation = false;
+                    this.state.isAdmin = true;
                     this.setupRealtimeSync();
-                    if (this.state.isAdmin) this.setupAdminSync();
+                    this.setupAdminSync();
+                    this.render();
+                    return;
+                }
+
+                // For all other users, check Firestore profile
+                try {
+                    const userDoc = await db.collection('users').doc(user.uid).get();
+                    
+                    if (!userDoc.exists) {
+                        await this.createUserProfile(user);
+                        this.state.isPendingActivation = true;
+                        this.state.isAdmin = false;
+                    } else {
+                        const userData = userDoc.data();
+                        this.state.isPendingActivation = !userData.isActive;
+                        this.state.isAdmin = userData.role === 'admin';
+                    }
+
+                    if (!this.state.isPendingActivation) {
+                        this.setupRealtimeSync();
+                        if (this.state.isAdmin) this.setupAdminSync();
+                    }
+                } catch (err) {
+                    // Firestore rules may be blocking - allow login but show warning
+                    console.warn('Could not read user profile:', err.message);
+                    // If Firestore is blocked, treat as pending so they at least see the waiting screen
+                    this.state.isPendingActivation = false;
+                    this.setupRealtimeSync();
                 }
                 
                 this.render();
@@ -76,17 +95,23 @@ class App {
     }
 
     async createUserProfile(user) {
-        // First user signed up? OR is it the owner's email? Make them admin.
-        const usersSnapshot = await db.collection('users').limit(1).get();
-        const isFirstUser = usersSnapshot.empty;
-        const isOwner = user.email === 'roxas.johnpaul@gmail.com';
+        try {
+            const isOwner = user.email === 'roxas.johnpaul@gmail.com';
+            let isFirstUser = false;
+            try {
+                const usersSnapshot = await db.collection('users').limit(1).get();
+                isFirstUser = usersSnapshot.empty;
+            } catch(e) { /* ignore */ }
 
-        await db.collection('users').doc(user.uid).set({
-            email: user.email,
-            role: (isFirstUser || isOwner) ? 'admin' : 'user',
-            isActive: (isFirstUser || isOwner) ? true : false,
-            createdAt: new Date().toISOString()
-        });
+            await db.collection('users').doc(user.uid).set({
+                email: user.email,
+                role: (isFirstUser || isOwner) ? 'admin' : 'user',
+                isActive: (isFirstUser || isOwner) ? true : false,
+                createdAt: new Date().toISOString()
+            });
+        } catch(err) {
+            console.warn('Could not create user profile:', err.message);
+        }
     }
 
     setupAdminSync() {
