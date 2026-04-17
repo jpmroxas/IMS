@@ -447,6 +447,24 @@ tr:hover {
     background: rgba(255, 255, 255, 0.1);
 }
 
+.auth-toggle {
+    text-align: center;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    margin-top: 1.5rem;
+}
+
+.auth-toggle a {
+    color: var(--accent-cyan);
+    text-decoration: none;
+    font-weight: 600;
+    margin-left: 0.25rem;
+}
+
+.auth-toggle a:hover {
+    text-decoration: underline;
+}
+
 /* Print Optimization */
 @media print {
     body * { visual-visibility: hidden; visibility: hidden; }

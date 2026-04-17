@@ -44,9 +44,17 @@
                         <label for="password">Password</label>
                         <input type="password" id="password" required placeholder="••••••••">
                     </div>
-                    <button type="submit" class="btn btn-primary">Sign In</button>
-                    <p style="text-align: center; font-size: 0.8rem; color: var(--text-secondary); margin-top: 1rem;">
-                        First time? Sign in will automatically create your account.
+                    <!-- Confirm Password (Hidden in Login Mode) -->
+                    <div class="input-group hidden" id="confirm-password-group">
+                        <label for="confirm-password">Confirm Password</label>
+                        <input type="password" id="confirm-password" placeholder="••••••••">
+                    </div>
+                    
+                    <button type="submit" id="auth-submit-btn" class="btn btn-primary">Sign In</button>
+                    
+                    <p class="auth-toggle">
+                        <span id="toggle-text">Don't have an account?</span>
+                        <a href="#" id="toggle-auth-link">Sign Up</a>
                     </p>
                 </form>
             </div>

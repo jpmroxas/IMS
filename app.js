@@ -19,7 +19,8 @@ class App {
             user: null,
             inventory: [],
             sales: [],
-            currentView: 'dashboard'
+            currentView: 'dashboard',
+            authMode: 'login' // 'login' or 'signup'
         };
 
         this.init();
@@ -95,13 +96,21 @@ class App {
             viewContent: document.getElementById('view-content'),
             viewTitle: document.getElementById('view-title'),
             navLinks: document.querySelectorAll('.nav-link'),
-            installBtn: document.getElementById('install-app-btn')
+            installBtn: document.getElementById('install-app-btn'),
+            confirmPasswordGroup: document.getElementById('confirm-password-group'),
+            toggleAuthLink: document.getElementById('toggle-auth-link'),
+            authSubmitBtn: document.getElementById('auth-submit-btn'),
+            toggleText: document.getElementById('toggle-text')
         };
     }
 
     bindEvents() {
         this.ui.loginForm.addEventListener('submit', (e) => this.handleLogin(e));
         this.ui.logoutBtn.addEventListener('click', () => this.handleLogout());
+        this.ui.toggleAuthLink.addEventListener('click', (e) => {
+            e.preventDefault();
+            this.toggleAuthMode();
+        });
 
         this.ui.navLinks.forEach(link => {
             link.addEventListener('click', (e) => {
@@ -119,25 +128,49 @@ class App {
 
     // --- State Actions ---
 
+    toggleAuthMode() {
+        this.state.authMode = this.state.authMode === 'login' ? 'signup' : 'login';
+        const isLogin = this.state.authMode === 'login';
+
+        this.ui.authSubmitBtn.innerText = isLogin ? 'Sign In' : 'Create Account';
+        this.ui.toggleText.innerText = isLogin ? "Don't have an account?" : "Already have an account?";
+        this.ui.toggleAuthLink.innerText = isLogin ? 'Sign Up' : 'Log In';
+        
+        if (isLogin) {
+            this.ui.confirmPasswordGroup.classList.add('hidden');
+            document.getElementById('confirm-password').removeAttribute('required');
+        } else {
+            this.ui.confirmPasswordGroup.classList.remove('hidden');
+            document.getElementById('confirm-password').setAttribute('required', 'required');
+        }
+    }
+
     async handleLogin(e) {
         e.preventDefault();
         const email = e.target.querySelector('#email').value;
         const password = e.target.querySelector('#password').value;
 
         try {
-            // Try to sign in
-            await auth.signInWithEmailAndPassword(email, password);
-        } catch (error) {
-            // If user doesn't exist, create them (Auto-Signup)
-            if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential') {
-                try {
-                    await auth.createUserWithEmailAndPassword(email, password);
-                } catch (signUpError) {
-                    alert('Login Error: ' + signUpError.message);
-                }
+            if (this.state.authMode === 'login') {
+                await auth.signInWithEmailAndPassword(email, password);
             } else {
-                alert('Authentication Error: ' + error.message);
+                const confirmPassword = e.target.querySelector('#confirm-password').value;
+                if (password !== confirmPassword) {
+                    alert('Passwords do not match!');
+                    return;
+                }
+                await auth.createUserWithEmailAndPassword(email, password);
+                alert('Account created successfully! Welcome.');
+                this.toggleAuthMode(); // Switch back to login mode
             }
+        } catch (error) {
+            let msg = error.message;
+            if (error.code === 'auth/operation-not-allowed') {
+                msg = "Login method not enabled. Please enable 'Email/Password' in your Firebase console.";
+            } else if (error.code === 'auth/weak-password') {
+                msg = "Password is too weak. Please use at least 6 characters.";
+            }
+            alert('Authentication Error: ' + msg);
         }
     }
 
